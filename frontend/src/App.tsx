@@ -3,6 +3,7 @@ import './App.css'
 
 type Message = {
   role: 'user' | 'assistant'
+  model?: string
   content: string
 }
 
@@ -40,17 +41,28 @@ function App() {
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
+      let model = ''
       let fullText = ''
 
       while (true) {
         const { done, value } = await reader?.read() || { done: true, value: null }
         if (done) break
         const text = decoder.decode(value, { stream: true })
-        setStreamData(prev => prev + text)
-        fullText += text
+
+        text.split('\n').forEach(line => {
+          if (!line) return
+          const data = JSON.parse(line)
+          if (data.type === 'model') {
+            model = data.data
+          } else if (data.type === 'text') {
+            setStreamData(prev => prev + data.data)
+            fullText += data.data
+          }
+        })
       }
       setMessages(prev => [...prev, {
         role: 'assistant',
+        model,
         content: fullText
       }])
     } catch (error) {
