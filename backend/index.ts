@@ -37,14 +37,14 @@ app.get("/openai/chat/", async (c) => {
 app.post("/openai/stream/", async (c) => {
   console.log("Started '/openai/stream/' request")
 
-  const { model = DEFAULT_MODEL, message } = await c.req.json();
-  if (!message) {
-    return c.json({ error: "message is required" }, 400);
+  const { model = DEFAULT_MODEL, messages } = await c.req.json();
+  if (!messages) {
+    return c.json({ error: "messages is required" }, 400);
   }
   
   const stream = await openai.chat.completions.create({
     model,
-    messages: [{ role: "user", content: message }],
+    messages,
     stream: true,
   });
 
