@@ -14,12 +14,19 @@ type Message = {
   model?: string
   content: string
   aborted: boolean
+  tokens?: number
 }
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [streamData, setStreamData] = useState('')
+  const [streamData, setStreamData] = useState<Message>({
+    role: 'assistant',
+    model: '',
+    content: '',
+    aborted: false,
+    tokens: 0
+  })
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
@@ -49,6 +56,7 @@ function App() {
         content: message.content
     }))
     let fullText = ''
+    let fullCompletionTokens = 0
     let model = ''
     setMessages(prev => [...prev, userMessage])
     setInput('')
@@ -72,15 +80,27 @@ function App() {
         const { done, value } = await reader?.read() || { done: true, value: null }
         if (done) break
         const text = decoder.decode(value, { stream: true })
-
         text.split('\n').forEach(line => {
           if (!line) return
           const data = JSON.parse(line)
           if (data.type === 'model') {
             model = data.data
+            // messagesの最後の要素のトークンを更新する
+            setMessages(prev => {
+              const lastMessage = prev[prev.length - 1]
+              if (lastMessage) {
+                lastMessage.tokens = data.tokens
+              }
+              return [...prev]
+            })
           } else if (data.type === 'text') {
-            setStreamData(prev => prev + data.data)
+            setStreamData(prev => ({
+              ...prev,
+              content: prev.content + data.data,
+              tokens: prev.tokens + data.tokens
+            }))
             fullText += data.data
+            fullCompletionTokens += data.tokens
           }
         })
       }
@@ -88,7 +108,8 @@ function App() {
         role: 'assistant',
         model,
         content: fullText,
-        aborted: false
+        aborted: false,
+        tokens: fullCompletionTokens
       }])
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -96,7 +117,8 @@ function App() {
           role: 'assistant',
           model,
           content: fullText,
-          aborted: true
+          aborted: true,
+          tokens: fullCompletionTokens
         }])
         setInput(userMessage.content)
       } else {
@@ -104,11 +126,19 @@ function App() {
           role: 'assistant',
           model,
           content: 'エラーが発生しました。もう一度お試しください。',
-          aborted: false
+          aborted: false,
+          tokens: fullCompletionTokens
         }])
+        setInput(userMessage.content)
       }
     } finally {
-      setStreamData('')
+      setStreamData({
+        role: 'assistant',
+        model: '',
+        content: '',
+        aborted: false,
+        tokens: 0
+      })
       setIsLoading(false)
     }
   }
@@ -141,13 +171,28 @@ function App() {
                     中断されました
                   </div>
                 )}
+                {message.tokens && (
+                  <div className="tokens-info">
+                    {message.tokens} tokens
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ))}
-        {streamData && (
+        {streamData.content && (
           <div className="message assistant">
-            <div className="message-content">{streamData}</div>
+            <div className="message-content">
+              {streamData.content}
+              <div className="message-info">
+                <div className="model-info">
+                  {selectedModel}
+                </div>
+                <div className="tokens-info">
+                  {streamData.tokens} tokens
+                </div>
+              </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />

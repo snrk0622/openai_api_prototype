@@ -234,3 +234,11 @@ button:disabled {
 .aborted-info {
   color: #dc3545;
 }
+
+.user .tokens-info {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.assistant .tokens-info {
+  color: #666;
+}
