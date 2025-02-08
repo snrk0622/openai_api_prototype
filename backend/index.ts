@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { OpenAI } from "openai";
 
+const DEFAULT_MODEL = "gpt-4o-mini";
+
 const app = new Hono();
 
 // CORSミドルウェアを追加
@@ -33,13 +35,13 @@ app.get("/openai/chat/", async (c) => {
 });
 
 app.post("/openai/stream/", async (c) => {
-  const { message } = await c.req.json();
+  const { model = DEFAULT_MODEL, message } = await c.req.json();
   if (!message) {
     return c.json({ error: "message is required" }, 400);
   }
   
   const stream = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model,
     messages: [{ role: "user", content: message }],
     stream: true,
   });
@@ -47,9 +49,12 @@ app.post("/openai/stream/", async (c) => {
   return new Response(
     new ReadableStream({
       async start(controller) {
+        // 最初にモデル情報を返却
+        controller.enqueue(JSON.stringify({ type: 'model', data: model }) + '\n' );
+
         for await (const chunk of stream) {
           const text = chunk.choices[0]?.delta?.content || '';
-          controller.enqueue(text);
+          controller.enqueue(JSON.stringify({ type: 'text', data: text }) + '\n');
         }
         controller.close();
       },

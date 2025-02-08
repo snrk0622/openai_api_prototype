@@ -1,8 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './App.css'
 
+const AVAILABLE_MODELS = [
+  "gpt-4o-mini",
+  "gpt-4o",
+  "o1",
+  "o3-mini",
+  "o1-mini",
+]
+
 type Message = {
   role: 'user' | 'assistant'
+  model?: string
   content: string
 }
 
@@ -12,6 +21,7 @@ function App() {
   const [streamData, setStreamData] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -36,21 +46,35 @@ function App() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: input })
+        body: JSON.stringify({ 
+          message: input,
+          model: selectedModel
+        })
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
+      let model = ''
       let fullText = ''
 
       while (true) {
         const { done, value } = await reader?.read() || { done: true, value: null }
         if (done) break
         const text = decoder.decode(value, { stream: true })
-        setStreamData(prev => prev + text)
-        fullText += text
+
+        text.split('\n').forEach(line => {
+          if (!line) return
+          const data = JSON.parse(line)
+          if (data.type === 'model') {
+            model = data.data
+          } else if (data.type === 'text') {
+            setStreamData(prev => prev + data.data)
+            fullText += data.data
+          }
+        })
       }
       setMessages(prev => [...prev, {
         role: 'assistant',
+        model,
         content: fullText
       }])
     } catch (error) {
@@ -73,7 +97,14 @@ function App() {
             key={index}
             className={`message ${message.role === 'user' ? 'user' : 'assistant'}`}
           >
-            <div className="message-content">{message.content}</div>
+            <div className="message-content">
+              {message.content}
+              {message.model && (
+                <div className="model-info">
+                  {message.model}
+                </div>
+              )}
+            </div>
           </div>
         ))}
         {streamData && (
@@ -91,6 +122,17 @@ function App() {
           placeholder="メッセージを入力..."
           disabled={isLoading}
         />
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          disabled={isLoading}
+        >
+          {AVAILABLE_MODELS.map(model => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </select>
         <button type="submit" disabled={isLoading || !input.trim()}>
           送信
         </button>
