@@ -31,6 +31,7 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
   const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const [totalTokens, setTotalTokens] = useState(0)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -93,12 +94,14 @@ function App() {
               }
               return [...prev]
             })
+            setTotalTokens(prev => prev + data.tokens)
           } else if (data.type === 'text') {
             setStreamData(prev => ({
               ...prev,
               content: prev.content + data.data,
               tokens: prev.tokens + data.tokens
             }))
+            setTotalTokens(prev => prev + data.tokens)
             fullText += data.data
             fullCompletionTokens += data.tokens
           }
@@ -150,6 +153,12 @@ function App() {
     }
   }
 
+  const getProgressColor = (tokens: number) => {
+    if (tokens > 800) return 'token-progress-danger';
+    if (tokens > 600) return 'token-progress-warning';
+    return '';
+  };
+
   return (
     <div className="chat-container">
       <div className="messages">
@@ -196,6 +205,17 @@ function App() {
           </div>
         )}
         <div ref={messagesEndRef} />
+      </div>
+      <div className="total-tokens-container">
+        <div className="token-progress-text">
+          Total: {totalTokens} / 1000 tokens
+        </div>
+        <div className="token-progress">
+          <div 
+            className={`token-progress-bar ${getProgressColor(totalTokens)}`}
+            style={{ width: `${Math.min(totalTokens / 1000 * 100, 100)}%` }}
+          />
+        </div>
       </div>
       <form onSubmit={handleSubmit} className="input-form">
         <input
