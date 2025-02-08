@@ -216,18 +216,21 @@ button:disabled {
   }
 }
 
-.model-info {
+.message-info {
   font-size: 0.8rem;
   color: #666;
-  margin-top: 0.5rem;
   text-align: right;
   opacity: 0.8;
 }
 
-.user .model-info {
+.user .message-info {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.assistant .model-info {
+.assistant .message-info {
   color: #666;
+}
+
+.aborted-info {
+  color: #dc3545;
 }

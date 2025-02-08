@@ -13,6 +13,7 @@ type Message = {
   role: 'user' | 'assistant'
   model?: string
   content: string
+  aborted?: boolean
 }
 
 function App() {
@@ -41,6 +42,8 @@ function App() {
     setAbortController(abortController)
 
     const userMessage = { role: 'user', content: input }
+    let fullText = ''
+    let model = ''
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
@@ -59,9 +62,6 @@ function App() {
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
-      let model = ''
-      let fullText = ''
-
       while (true) {
         const { done, value } = await reader?.read() || { done: true, value: null }
         if (done) break
@@ -87,12 +87,15 @@ function App() {
       if (error instanceof Error && error.name === 'AbortError') {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: 'リクエストが中断されました。'
+          model,
+          content: fullText,
+          aborted: true
         }])
         setInput(userMessage.content)
       } else {
         setMessages(prev => [...prev, {
           role: 'assistant',
+          model,
           content: 'エラーが発生しました。もう一度お試しください。'
         }])
       }
@@ -119,11 +122,18 @@ function App() {
           >
             <div className="message-content">
               {message.content}
-              {message.model && (
-                <div className="model-info">
-                  {message.model}
-                </div>
-              )}
+              <div className="message-info">
+                {message.model && (
+                  <div className="model-info">
+                    {message.model}
+                  </div>
+                )}
+                {message.aborted && (
+                  <div className="aborted-info">
+                    中断されました
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
