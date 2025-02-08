@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import { OpenAI } from "openai";
 
 const app = new Hono();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 app.get("/", (c) => c.text("Hello Hono.js"));
 
@@ -10,15 +13,43 @@ app.get("/openai/chat/", async (c) => {
   if (!message) {
     return c.json({ error: "message is required" }, 400);
   }
-
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: message }],
   });
   return c.json(completion.choices[0].message.content);
+});
+
+app.post("/openai/stream/", async (c) => {
+  const { message } = await c.req.json();
+  if (!message) {
+    return c.json({ error: "message is required" }, 400);
+  }
+  
+  const stream = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: message }],
+    stream: true,
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content || '';
+          controller.enqueue(text);
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    },
+  );
 });
 
 export default {
