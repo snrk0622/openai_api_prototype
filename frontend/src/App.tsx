@@ -85,7 +85,14 @@ function App() {
             key={index}
             className={`message ${message.role === 'user' ? 'user' : 'assistant'}`}
           >
-            <div className="message-content">{message.content}</div>
+            <div className="message-content">
+              {message.content}
+              {message.model && (
+                <div className="model-info">
+                  {message.model}
+                </div>
+              )}
+            </div>
           </div>
         ))}
         {streamData && (

@@ -174,3 +174,15 @@ button:disabled {
     background-color: #ccc;
   }
 }
+
+.model-info {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
+  text-align: right;
+  opacity: 0.8;
+}
+
+.assistant .model-info {
+  color: #555;
+}
