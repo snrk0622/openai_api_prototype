@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import './App.css'
 
 const AVAILABLE_MODELS = [
-  "gpt-4o",
   "gpt-4o-mini",
+  "gpt-4o",
   "o1",
   "o3-mini",
   "o1-mini",
@@ -21,7 +21,7 @@ function App() {
   const [streamData, setStreamData] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id)
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
