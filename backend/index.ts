@@ -35,6 +35,8 @@ app.get("/openai/chat/", async (c) => {
 });
 
 app.post("/openai/stream/", async (c) => {
+  console.log("Started '/openai/stream/' request")
+
   const { model = DEFAULT_MODEL, message } = await c.req.json();
   if (!message) {
     return c.json({ error: "message is required" }, 400);
@@ -46,17 +48,47 @@ app.post("/openai/stream/", async (c) => {
     stream: true,
   });
 
+  let streamController: ReadableStreamDefaultController;
+
+  // フロントエンドからの中断を検知
+  c.req.raw.signal.addEventListener('abort', () => {
+    stream.controller.abort();
+    if (streamController) {
+      streamController.close();
+    }
+    console.log("Stream aborted by client");
+  });
+
   return new Response(
     new ReadableStream({
       async start(controller) {
+        streamController = controller;
+
+        const fullResponse = {
+          model,
+          message: '',
+        }
+
         // 最初にモデル情報を返却
         controller.enqueue(JSON.stringify({ type: 'model', data: model }) + '\n' );
 
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content || '';
-          controller.enqueue(JSON.stringify({ type: 'text', data: text }) + '\n');
+        try {
+          for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content || '';
+            controller.enqueue(JSON.stringify({ type: 'text', data: text }) + '\n');
+            fullResponse.message += text;
+          }
+          console.log("Finished '/openai/stream/' request successfully with response: ", fullResponse)
+        } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') {
+            stream.controller.abort();
+            console.log("Finished '/openai/stream/' request by abort")
+          } else {
+            console.error("Finished '/openai/stream/' request with error: ", error)
+          }
+        } finally {
+          controller.close();
         }
-        controller.close();
       },
     }),
     {

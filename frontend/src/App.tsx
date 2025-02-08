@@ -13,6 +13,7 @@ type Message = {
   role: 'user' | 'assistant'
   model?: string
   content: string
+  aborted?: boolean
 }
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -35,7 +37,13 @@ function App() {
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
+    // 中断用のAbortControllerを作成
+    const abortController = new AbortController()
+    setAbortController(abortController)
+
     const userMessage = { role: 'user', content: input }
+    let fullText = ''
+    let model = ''
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
@@ -49,13 +57,11 @@ function App() {
         body: JSON.stringify({ 
           message: input,
           model: selectedModel
-        })
+        }),
+        signal: abortController?.signal
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
-      let model = ''
-      let fullText = ''
-
       while (true) {
         const { done, value } = await reader?.read() || { done: true, value: null }
         if (done) break
@@ -78,14 +84,31 @@ function App() {
         content: fullText
       }])
     } catch (error) {
-      console.error('Error:', error)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'エラーが発生しました。もう一度お試しください。'
-      }])
+      if (error instanceof Error && error.name === 'AbortError') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          model,
+          content: fullText,
+          aborted: true
+        }])
+        setInput(userMessage.content)
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          model,
+          content: 'エラーが発生しました。もう一度お試しください。'
+        }])
+      }
     } finally {
       setStreamData('')
       setIsLoading(false)
+    }
+  }
+
+  const handleAbort = () => {
+    if (abortController) {
+      abortController.abort()
+      setAbortController(null)
     }
   }
 
@@ -99,11 +122,18 @@ function App() {
           >
             <div className="message-content">
               {message.content}
-              {message.model && (
-                <div className="model-info">
-                  {message.model}
-                </div>
-              )}
+              <div className="message-info">
+                {message.model && (
+                  <div className="model-info">
+                    {message.model}
+                  </div>
+                )}
+                {message.aborted && (
+                  <div className="aborted-info">
+                    中断されました
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -133,9 +163,16 @@ function App() {
             </option>
           ))}
         </select>
-        <button type="submit" disabled={isLoading || !input.trim()}>
-          送信
-        </button>
+        {isLoading && (
+          <button type="button" onClick={handleAbort} disabled={!abortController} className="abort-button">
+            中断
+          </button>
+        )}
+        {!isLoading && (
+          <button type="submit" disabled={!input.trim()}>
+            送信
+          </button>
+        )}
       </form>
     </div>
   )
