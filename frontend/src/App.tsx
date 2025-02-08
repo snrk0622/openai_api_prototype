@@ -48,7 +48,6 @@ function App() {
         role: message.role,
         content: message.content
     }))
-  console.log(contextMessages)
     let fullText = ''
     let model = ''
     setMessages(prev => [...prev, userMessage])
