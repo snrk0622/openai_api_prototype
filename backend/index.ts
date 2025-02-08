@@ -1,7 +1,19 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { OpenAI } from "openai";
 
 const app = new Hono();
+
+// CORSミドルウェアを追加
+app.use('/*', cors({
+  origin: ['http://localhost:5173'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 600,
+}));
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
