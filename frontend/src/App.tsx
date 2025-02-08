@@ -22,6 +22,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0])
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -34,6 +35,10 @@ function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+
+    // 中断用のAbortControllerを作成
+    const abortController = new AbortController()
+    setAbortController(abortController)
 
     const userMessage = { role: 'user', content: input }
     setMessages(prev => [...prev, userMessage])
@@ -49,7 +54,8 @@ function App() {
         body: JSON.stringify({ 
           message: input,
           model: selectedModel
-        })
+        }),
+        signal: abortController?.signal
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -78,14 +84,28 @@ function App() {
         content: fullText
       }])
     } catch (error) {
-      console.error('Error:', error)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'エラーが発生しました。もう一度お試しください。'
-      }])
+      if (error instanceof Error && error.name === 'AbortError') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'リクエストが中断されました。'
+        }])
+        setInput(userMessage.content)
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'エラーが発生しました。もう一度お試しください。'
+        }])
+      }
     } finally {
       setStreamData('')
       setIsLoading(false)
+    }
+  }
+
+  const handleAbort = () => {
+    if (abortController) {
+      abortController.abort()
+      setAbortController(null)
     }
   }
 
@@ -133,9 +153,16 @@ function App() {
             </option>
           ))}
         </select>
-        <button type="submit" disabled={isLoading || !input.trim()}>
-          送信
-        </button>
+        {isLoading && (
+          <button type="button" onClick={handleAbort} disabled={!abortController} className="abort-button">
+            中断
+          </button>
+        )}
+        {!isLoading && (
+          <button type="submit" disabled={!input.trim()}>
+            送信
+          </button>
+        )}
       </form>
     </div>
   )
