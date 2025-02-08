@@ -48,9 +48,22 @@ app.post("/openai/stream/", async (c) => {
     stream: true,
   });
 
+  let streamController: ReadableStreamDefaultController;
+
+  // フロントエンドからの中断を検知
+  c.req.raw.signal.addEventListener('abort', () => {
+    stream.controller.abort();
+    if (streamController) {
+      streamController.close();
+    }
+    console.log("Stream aborted by client");
+  });
+
   return new Response(
     new ReadableStream({
       async start(controller) {
+        streamController = controller;
+
         const fullResponse = {
           model,
           message: '',
