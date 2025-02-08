@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { OpenAI } from "openai";
+import { encoding_for_model } from "tiktoken";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 
@@ -48,6 +49,7 @@ app.post("/openai/stream/", async (c) => {
     stream: true,
   });
 
+  const encoder = encoding_for_model(model);
   let streamController: ReadableStreamDefaultController;
 
   // フロントエンドからの中断を検知
@@ -70,12 +72,13 @@ app.post("/openai/stream/", async (c) => {
         }
 
         // 最初にモデル情報を返却
-        controller.enqueue(JSON.stringify({ type: 'model', data: model }) + '\n' );
+        const inputTokens = encoder.encode(messages.map(m => m.content).join('')).length;
+        controller.enqueue(JSON.stringify({ type: 'model', data: model, tokens: inputTokens }) + '\n' );
 
         try {
           for await (const chunk of stream) {
             const text = chunk.choices[0]?.delta?.content || '';
-            controller.enqueue(JSON.stringify({ type: 'text', data: text }) + '\n');
+            controller.enqueue(JSON.stringify({ type: 'text', data: text, tokens: encoder.encode(text).length }) + '\n');
             fullResponse.message += text;
           }
           console.log("Finished '/openai/stream/' request successfully with response: ", fullResponse)
