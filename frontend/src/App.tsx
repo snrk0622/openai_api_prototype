@@ -1,6 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './App.css'
 
+const AVAILABLE_MODELS = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o1",
+  "o3-mini",
+  "o1-mini",
+]
+
 type Message = {
   role: 'user' | 'assistant'
   model?: string
@@ -13,6 +21,7 @@ function App() {
   const [streamData, setStreamData] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -37,7 +46,10 @@ function App() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: input })
+        body: JSON.stringify({ 
+          message: input,
+          model: selectedModel
+        })
       })
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -110,6 +122,17 @@ function App() {
           placeholder="メッセージを入力..."
           disabled={isLoading}
         />
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          disabled={isLoading}
+        >
+          {AVAILABLE_MODELS.map(model => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </select>
         <button type="submit" disabled={isLoading || !input.trim()}>
           送信
         </button>

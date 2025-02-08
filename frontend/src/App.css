@@ -71,7 +71,7 @@
 
 .message-content {
   max-width: 70%;
-  padding: 0.8rem 1rem;
+  padding: 1rem;
   border-radius: 1rem;
   white-space: pre-wrap;
   word-break: break-word;
@@ -84,9 +84,10 @@
 }
 
 .assistant .message-content {
-  background-color: #f0f0f0;
+  background-color: white;
   color: black;
   border-radius: 1rem 1rem 1rem 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .input-form {
@@ -95,6 +96,7 @@
   padding: 1rem;
   background-color: white;
   border-top: 1px solid #eee;
+  align-items: center;
 }
 
 input {
@@ -104,7 +106,39 @@ input {
   border-radius: 0.5rem;
   font-size: 1rem;
   background-color: white;
+}
+
+select {
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: white;
   color: black;
+  min-width: 200px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  padding-right: 2.5rem;
+}
+
+select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+/* Firefoxでの黒い背景を防ぐ */
+select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 #000;
+}
+
+/* IEでの黒い背景を防ぐ */
+select::-ms-expand {
+  display: none;
 }
 
 button {
@@ -115,6 +149,11 @@ button {
   border-radius: 0.5rem;
   cursor: pointer;
   font-size: 1rem;
+  white-space: nowrap;
+}
+
+button:hover {
+  background-color: #0056b3;
 }
 
 button:disabled {
@@ -183,6 +222,10 @@ button:disabled {
   opacity: 0.8;
 }
 
+.user .model-info {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .assistant .model-info {
-  color: #555;
+  color: #666;
 }
