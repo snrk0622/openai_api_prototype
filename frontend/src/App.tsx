@@ -13,7 +13,7 @@ type Message = {
   role: 'user' | 'assistant'
   model?: string
   content: string
-  aborted?: boolean
+  aborted: boolean
 }
 
 function App() {
@@ -41,7 +41,14 @@ function App() {
     const abortController = new AbortController()
     setAbortController(abortController)
 
-    const userMessage = { role: 'user', content: input }
+    const userMessage: Message = { role: 'user', content: input, aborted: false }
+    const contextMessages = [...messages, userMessage]
+      .filter(message => !message.aborted)
+      .map(message => ({
+        role: message.role,
+        content: message.content
+    }))
+  console.log(contextMessages)
     let fullText = ''
     let model = ''
     setMessages(prev => [...prev, userMessage])
@@ -55,7 +62,7 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          message: input,
+          messages: contextMessages,
           model: selectedModel
         }),
         signal: abortController?.signal
@@ -81,7 +88,8 @@ function App() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         model,
-        content: fullText
+        content: fullText,
+        aborted: false
       }])
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -96,7 +104,8 @@ function App() {
         setMessages(prev => [...prev, {
           role: 'assistant',
           model,
-          content: 'エラーが発生しました。もう一度お試しください。'
+          content: 'エラーが発生しました。もう一度お試しください。',
+          aborted: false
         }])
       }
     } finally {
